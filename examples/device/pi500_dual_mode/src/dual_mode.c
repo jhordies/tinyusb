@@ -64,7 +64,7 @@ static const key_midi_map_t black_keys[] = {
 
 // Keyboard keymap (simplified)
 static const uint8_t keymap[MATRIX_ROWS][MATRIX_COLS] = {
-  {0, HID_KEY_Q, HID_KEY_W, HID_KEY_E, HID_KEY_R, HID_KEY_U, HID_KEY_I, HID_KEY_O, HID_KEY_P, 0, HID_KEY_PAUSE_BREAK, 0, 0, 0, 0, 0, 0, 0},
+  {0, HID_KEY_Q, HID_KEY_W, HID_KEY_E, HID_KEY_R, HID_KEY_U, HID_KEY_I, HID_KEY_O, HID_KEY_P, 0, HID_KEY_PAUSE, 0, 0, 0, 0, 0, 0, 0},
   {0, HID_KEY_TAB, HID_KEY_CAPS_LOCK, HID_KEY_F3, HID_KEY_T, HID_KEY_Y, HID_KEY_BRACKET_LEFT, HID_KEY_F7, HID_KEY_BRACKET_RIGHT, 0, HID_KEY_BACKSPACE, 0, 0, 0, 0, HID_KEY_SHIFT_LEFT, HID_KEY_ALT_LEFT, 0},
   {0, HID_KEY_A, HID_KEY_S, HID_KEY_D, HID_KEY_F, HID_KEY_J, HID_KEY_K, HID_KEY_L, HID_KEY_SEMICOLON, HID_KEY_GUI_LEFT, HID_KEY_BACKSLASH, 0, 0, 0, 0, HID_KEY_SHIFT_RIGHT, 0, 0},
   {0, HID_KEY_ESCAPE, HID_KEY_PRINT_SCREEN, HID_KEY_F4, HID_KEY_G, HID_KEY_H, HID_KEY_F6, 0, HID_KEY_APOSTROPHE, 0, 0, HID_KEY_SPACE, 0, 0, HID_KEY_ARROW_UP, 0, 0, 0},
@@ -148,12 +148,12 @@ void process_midi_mode(void) {
           (row == MODE_SWITCH_ROW2 && col == MODE_SWITCH_COL2)) continue;
       
       if (key_states[row][col] && !prev_key_states[row][col]) {
-        uint8_t midi_note = get_midi_note_for_key(row, col);
+        uint8_t midi_note = get_midi_note_for_key((uint8_t)row, (uint8_t)col);
         if (midi_note > 0) {
           send_note_on(midi_note, MIDI_VELOCITY);
         }
       } else if (!key_states[row][col] && prev_key_states[row][col]) {
-        uint8_t midi_note = get_midi_note_for_key(row, col);
+        uint8_t midi_note = get_midi_note_for_key((uint8_t)row, (uint8_t)col);
         if (midi_note > 0) {
           send_note_off(midi_note);
         }
