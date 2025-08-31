@@ -201,7 +201,7 @@ void dual_mode_task(void) {
   for (int row = 0; row < MATRIX_ROWS; row++) {
     for (int col = 0; col < MATRIX_COLS; col++) {
       prev_key_states[row][col] = key_states[row][col];
-      key_states[row][col] = matrix_is_key_pressed(row, col);
+      key_states[row][col] = matrix_is_key_pressed((uint8_t)row, (uint8_t)col);
     }
   }
   
