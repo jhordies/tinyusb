@@ -149,8 +149,8 @@ void hid_task(void)
   
   for (int row = 0; row < MATRIX_ROWS; row++) {
     for (int col = 0; col < MATRIX_COLS; col++) {
-      if (matrix_is_key_pressed(row, col)) {
-        uint8_t hid_key = matrix_get_keycode(row, col);
+      if (matrix_is_key_pressed((uint8_t)row, (uint8_t)col)) {
+        uint8_t hid_key = matrix_get_keycode((uint8_t)row, (uint8_t)col);
         
         if (hid_key >= HID_KEY_CONTROL_LEFT && hid_key <= HID_KEY_GUI_RIGHT) {
           // Modifier key
