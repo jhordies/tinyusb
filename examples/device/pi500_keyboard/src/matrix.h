@@ -49,6 +49,7 @@ void matrix_init(void);
 void matrix_scan(void);
 bool matrix_is_key_pressed(uint8_t row, uint8_t col);
 uint8_t matrix_get_keycode(uint8_t row, uint8_t col);
+void handle_power_key(bool pressed);
 
 #ifdef __cplusplus
 }

@@ -139,18 +139,33 @@ void hid_task(void)
   if ( board_millis() - start_ms < interval_ms) return; // not enough time
   start_ms += interval_ms;
 
-  uint32_t const btn = board_button_read();
-
-  // Remote wakeup
-  if ( tud_suspended() && btn )
-  {
-    // Wake up host if we are in suspend mode
-    // and REMOTE_WAKEUP feature is enabled by host
-    tud_remote_wakeup();
-  }else
-  {
-    // Send the 1st of report chain, the rest will be sent by tud_hid_report_complete_cb()
-    send_hid_report(REPORT_ID_KEYBOARD, btn);
+  // Scan matrix and process keys
+  matrix_scan();
+  
+  // Build keyboard report
+  uint8_t keycode[6] = {0};
+  uint8_t modifier = 0;
+  int key_count = 0;
+  
+  for (int row = 0; row < MATRIX_ROWS; row++) {
+    for (int col = 0; col < MATRIX_COLS; col++) {
+      if (matrix_is_key_pressed(row, col)) {
+        uint8_t hid_key = matrix_get_keycode(row, col);
+        
+        if (hid_key >= HID_KEY_CONTROL_LEFT && hid_key <= HID_KEY_GUI_RIGHT) {
+          // Modifier key
+          modifier |= (1 << (hid_key - HID_KEY_CONTROL_LEFT));
+        } else if (hid_key > 0 && key_count < 6) {
+          // Regular key
+          keycode[key_count++] = hid_key;
+        }
+      }
+    }
+  }
+  
+  // Send keyboard report
+  if (tud_hid_ready()) {
+    tud_hid_keyboard_report(REPORT_ID_KEYBOARD, modifier, keycode);
   }
 }
 
@@ -203,15 +218,13 @@ void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_
 
       if (kbd_leds & KEYBOARD_LED_CAPSLOCK)
       {
-        // Capslock On: disable blink, turn led on
-        // blink_interval_ms = 0;
-        board_led_write(true);
+        // Capslock On: turn on Caps Lock LED
+        gpio_put(25, 1); // CAPS_LED_GPIO
       }
       else
       {
-        // Caplocks Off: back to normal blink
-        board_led_write(false);
-        // blink_interval_ms = BLINK_MOUNTED;
+        // Caplocks Off: turn off Caps Lock LED
+        gpio_put(25, 0); // CAPS_LED_GPIO
       }
     }
   }
