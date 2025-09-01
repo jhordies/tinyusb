@@ -90,10 +90,10 @@ device_mode_t get_current_mode(void) {
 }
 
 void check_mode_switch(void) {
-  bool fn_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW1, MODE_SWITCH_COL1);
-  bool scroll_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW2, MODE_SWITCH_COL2);
+  bool lshift_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW1, MODE_SWITCH_COL1);
+  bool rshift_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW2, MODE_SWITCH_COL2);
   
-  if (fn_pressed && scroll_pressed) {
+  if (lshift_pressed && rshift_pressed) {
     if (!mode_switch_pressed) {
       mode_switch_pressed = true;
       mode_switch_time = board_millis();
@@ -141,11 +141,19 @@ void send_note_off(uint8_t note) {
 }
 
 void process_midi_mode(void) {
+  // Check if both shift keys are pressed (mode switch)
+  bool lshift_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW1, MODE_SWITCH_COL1);
+  bool rshift_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW2, MODE_SWITCH_COL2);
+  bool mode_switch_active = lshift_pressed && rshift_pressed;
+  
   for (int row = 0; row < MATRIX_ROWS; row++) {
     for (int col = 0; col < MATRIX_COLS; col++) {
-      // Skip mode switch keys
-      if ((row == MODE_SWITCH_ROW1 && col == MODE_SWITCH_COL1) ||
-          (row == MODE_SWITCH_ROW2 && col == MODE_SWITCH_COL2)) continue;
+      // Skip shift keys only when both are pressed (mode switching)
+      if (mode_switch_active && 
+          ((row == MODE_SWITCH_ROW1 && col == MODE_SWITCH_COL1) ||
+           (row == MODE_SWITCH_ROW2 && col == MODE_SWITCH_COL2))) {
+        continue;
+      }
       
       if (key_states[row][col] && !prev_key_states[row][col]) {
         uint8_t midi_note = get_midi_note_for_key((uint8_t)row, (uint8_t)col);
@@ -172,14 +180,23 @@ void process_keyboard_mode(void) {
   memset(keyboard_report, 0, sizeof(keyboard_report));
   int report_index = 0;
   
+  // Check if both shift keys are pressed (mode switch)
+  bool lshift_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW1, MODE_SWITCH_COL1);
+  bool rshift_pressed = matrix_is_key_pressed(MODE_SWITCH_ROW2, MODE_SWITCH_COL2);
+  bool mode_switch_active = lshift_pressed && rshift_pressed;
+  
   for (int row = 0; row < MATRIX_ROWS; row++) {
     for (int col = 0; col < MATRIX_COLS; col++) {
-      // Skip mode switch keys
-      if ((row == MODE_SWITCH_ROW1 && col == MODE_SWITCH_COL1) ||
-          (row == MODE_SWITCH_ROW2 && col == MODE_SWITCH_COL2)) continue;
-      
       if (key_states[row][col]) {
         uint8_t keycode = keymap[row][col];
+        
+        // Skip shift keys only when both are pressed (mode switching)
+        if (mode_switch_active && 
+            ((row == MODE_SWITCH_ROW1 && col == MODE_SWITCH_COL1) ||
+             (row == MODE_SWITCH_ROW2 && col == MODE_SWITCH_COL2))) {
+          continue;
+        }
+        
         if (keycode >= HID_KEY_CONTROL_LEFT && keycode <= HID_KEY_GUI_RIGHT) {
           // Modifier key
           keyboard_modifier |= (1 << (keycode - HID_KEY_CONTROL_LEFT));
