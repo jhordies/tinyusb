@@ -30,6 +30,7 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 #include "matrix.h"
+#include "hardware/gpio.h"
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
