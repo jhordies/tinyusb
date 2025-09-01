@@ -39,11 +39,11 @@ typedef enum {
   MODE_MIDI = 1
 } device_mode_t;
 
-// Mode switching key combination: Left Ctrl + Print Screen
-#define MODE_SWITCH_ROW1 6  // Left Ctrl key
-#define MODE_SWITCH_COL1 0
-#define MODE_SWITCH_ROW2 3  // Print Screen key  
-#define MODE_SWITCH_COL2 2
+// Mode switching key combination: Left Shift + Right Shift
+#define MODE_SWITCH_ROW1 1  // Left Shift key
+#define MODE_SWITCH_COL1 15
+#define MODE_SWITCH_ROW2 2  // Right Shift key  
+#define MODE_SWITCH_COL2 15
 
 // MIDI note definitions
 #define MIDI_NOTE_C4  60
