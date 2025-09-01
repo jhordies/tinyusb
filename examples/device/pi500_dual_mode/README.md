@@ -10,9 +10,9 @@ The Pi 500 keyboard can operate in two modes:
 
 ## Mode Switching
 
-**Key Combination**: **Fn + Print Screen** (hold for 500ms)
+**Key Combination**: **Left Ctrl + Print Screen** (hold for 500ms)
 
-- **Fn**: [3,9] - Function key (bottom row, clearly labeled)
+- **Left Ctrl**: [6,0] - Left Control key (bottom left corner)
 - **Print Screen**: [3,2] - Print Screen key (numpad area, clearly labeled)
 
 This combination is rarely used in normal typing, making it safe for mode switching.
@@ -85,12 +85,12 @@ make
 Device starts in **Keyboard Mode** by default.
 
 ### Switching to MIDI Mode
-1. Hold **Fn + Print Screen** for 500ms
+1. Hold **Left Ctrl + Print Screen** for 500ms
 2. LED changes to fast blink (250ms)
 3. Device now sends MIDI messages instead of keyboard input
 
 ### Switching Back to Keyboard Mode
-1. Hold **Fn + Print Screen** for 500ms again
+1. Hold **Left Ctrl + Print Screen** for 500ms again
 2. LED changes to slow blink (1000ms)
 3. Device returns to normal keyboard operation
 
@@ -122,7 +122,7 @@ Both interfaces are always available to the host, but only the active mode proce
 ## Key Mapping Details
 
 ### Mode Switch Keys (Always Reserved)
-- **Fn**: [3,9] - Function key
+- **Left Ctrl**: [6,0] - Left Control key
 - **Print Screen**: [3,2] - Print Screen key
 
 These keys are excluded from both keyboard and MIDI processing to prevent conflicts.
