@@ -26,6 +26,15 @@
 #include "matrix.h"
 #include "hardware/gpio.h"
 #include "pico/stdlib.h"
+#include "class/hid/hid.h"
+
+// Pi 500 power button GPIO
+#define PWR_BTN_GPIO 19
+#define CAPS_LED_GPIO 25
+
+// Power button state
+static bool pwr_button_pressed = false;
+static bool prev_power_key_state = false;
 
 // Pi 500 keyboard matrix pin definitions
 const uint8_t row_pins[MATRIX_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -33,6 +42,20 @@ const uint8_t col_pins[MATRIX_COLS] = {27, 8, 9, 10, 11, 12, 13, 14, 23, 24, 22,
 
 // Matrix state
 static bool matrix_state[MATRIX_ROWS][MATRIX_COLS];
+static bool matrix_prev_state[MATRIX_ROWS][MATRIX_COLS];
+
+// Power button control (same as QMK implementation)
+static void press_power_button(bool press) {
+  if (press && !pwr_button_pressed) {
+    gpio_init(PWR_BTN_GPIO);
+    gpio_set_dir(PWR_BTN_GPIO, GPIO_OUT);
+    gpio_put(PWR_BTN_GPIO, 1); // 'Press' Power Button
+    pwr_button_pressed = true;
+  } else if (!press && pwr_button_pressed) {
+    gpio_set_dir(PWR_BTN_GPIO, GPIO_IN); // 'Release' Power Button
+    pwr_button_pressed = false;
+  }
+}
 
 void matrix_init(void) {
   // Initialize row pins as inputs with pull-up
@@ -49,15 +72,48 @@ void matrix_init(void) {
     gpio_put(col_pins[i], 1);
   }
   
+  // Initialize power key detection (same as QMK)
+  // GP20 = Top Right (Power) Key Column, GP6 = Top Right (Power) Key Row
+  gpio_init(20); // Power key column
+  gpio_set_dir(20, GPIO_OUT);
+  gpio_put(20, 1);
+  gpio_init(6);  // Power key row
+  gpio_set_dir(6, GPIO_IN);
+  gpio_pull_up(6);
+  
+  // Initialize power button GPIO
+  gpio_init(PWR_BTN_GPIO);
+  gpio_set_dir(PWR_BTN_GPIO, GPIO_IN);
+  
+  // Initialize Caps Lock LED
+  gpio_init(CAPS_LED_GPIO);
+  gpio_set_dir(CAPS_LED_GPIO, GPIO_OUT);
+  gpio_put(CAPS_LED_GPIO, 0);
+  
   // Initialize matrix state
   for (int row = 0; row < MATRIX_ROWS; row++) {
     for (int col = 0; col < MATRIX_COLS; col++) {
       matrix_state[row][col] = false;
+      matrix_prev_state[row][col] = false;
     }
   }
+  
+  // Check initial power key state (same as QMK)
+  gpio_put(20, 0); // Set power key column low
+  sleep_us(1);
+  bool power_key_pressed = !gpio_get(6); // Read power key row
+  gpio_put(20, 1); // Set power key column back high
+  press_power_button(power_key_pressed);
 }
 
 void matrix_scan(void) {
+  // Save previous state
+  for (int row = 0; row < MATRIX_ROWS; row++) {
+    for (int col = 0; col < MATRIX_COLS; col++) {
+      matrix_prev_state[row][col] = matrix_state[row][col];
+    }
+  }
+  
   // Scan matrix (ROW2COL)
   for (int col = 0; col < MATRIX_COLS; col++) {
     // Set current column low
@@ -73,6 +129,20 @@ void matrix_scan(void) {
     // Set column back to high
     gpio_put(col_pins[col], 1);
   }
+  
+  // Scan power key separately (same as QMK)
+  gpio_put(20, 0); // Set power key column low
+  sleep_us(1);
+  bool power_key_pressed = !gpio_get(6); // Read power key row
+  gpio_put(20, 1); // Set power key column back high
+  
+  // Handle power key press/release
+  if (power_key_pressed && !prev_power_key_state) {
+    press_power_button(true);
+  } else if (!power_key_pressed && prev_power_key_state) {
+    press_power_button(false);
+  }
+  prev_power_key_state = power_key_pressed;
 }
 
 bool matrix_is_key_pressed(uint8_t row, uint8_t col) {
