@@ -28,6 +28,7 @@
 #include "tusb.h"
 #include "class/hid/hid.h"
 #include "bsp/board_api.h"
+#include "hardware/gpio.h"
 
 // Current operating mode
 static device_mode_t current_mode = MODE_KEYBOARD;
@@ -39,6 +40,13 @@ static bool prev_key_states[MATRIX_ROWS][MATRIX_COLS];
 // Mode switch detection
 static bool mode_switch_pressed = false;
 static uint32_t mode_switch_time = 0;
+static bool mode_switched = false;  // Prevent multiple switches per combo press
+
+// Caps Lock LED blinking for mode indication
+static uint32_t caps_blink_start = 0;
+static bool caps_blink_state = false;
+static uint8_t caps_blink_count = 0;
+static bool caps_led_override = false;  // Override normal Caps Lock behavior
 
 // Keyboard report
 static uint8_t keyboard_report[6] = {0};
@@ -69,13 +77,20 @@ static const uint8_t keymap[MATRIX_ROWS][MATRIX_COLS] = {
   {0, HID_KEY_A, HID_KEY_S, HID_KEY_D, HID_KEY_F, HID_KEY_J, HID_KEY_K, HID_KEY_L, HID_KEY_SEMICOLON, HID_KEY_GUI_LEFT, HID_KEY_BACKSLASH, 0, 0, 0, 0, HID_KEY_SHIFT_RIGHT, 0, 0},
   {0, HID_KEY_ESCAPE, HID_KEY_PRINT_SCREEN, HID_KEY_F4, HID_KEY_G, HID_KEY_H, HID_KEY_F6, 0, HID_KEY_APOSTROPHE, 0, 0, HID_KEY_SPACE, 0, 0, HID_KEY_ARROW_UP, 0, 0, 0},
   {HID_KEY_CONTROL_RIGHT, HID_KEY_Z, HID_KEY_X, HID_KEY_C, HID_KEY_V, HID_KEY_M, HID_KEY_COMMA, HID_KEY_PERIOD, HID_KEY_SCROLL_LOCK, 0, HID_KEY_ENTER, HID_KEY_F11, 0, 0, 0, 0, 0, 0},
-  {0, HID_KEY_HOME, HID_KEY_PAGE_UP, HID_KEY_PAGE_DOWN, HID_KEY_B, 0, HID_KEY_INSERT, HID_KEY_END, HID_KEY_SLASH, HID_KEY_ALT_RIGHT, 0, HID_KEY_ARROW_DOWN, HID_KEY_ARROW_RIGHT, 0, HID_KEY_ARROW_LEFT, 0, 0, 0},
+  {0, HID_KEY_HOME, HID_KEY_PAGE_UP, HID_KEY_PAGE_DOWN, HID_KEY_B, HID_KEY_N, HID_KEY_INSERT, HID_KEY_END, HID_KEY_SLASH, HID_KEY_ALT_RIGHT, 0, HID_KEY_ARROW_DOWN, HID_KEY_ARROW_RIGHT, 0, HID_KEY_ARROW_LEFT, 0, 0, 0},
   {HID_KEY_CONTROL_LEFT, HID_KEY_GRAVE, HID_KEY_F1, HID_KEY_F2, HID_KEY_5, HID_KEY_6, HID_KEY_EQUAL, HID_KEY_F8, HID_KEY_MINUS, 0, HID_KEY_F9, HID_KEY_DELETE, 0, 0, 0, 0, 0, 0},
   {HID_KEY_F5, HID_KEY_1, HID_KEY_2, HID_KEY_3, HID_KEY_4, HID_KEY_7, HID_KEY_8, HID_KEY_9, HID_KEY_0, HID_KEY_F12, HID_KEY_F10, 0, 0, 0, 0, 0, 0, 0}
 };
 
 void dual_mode_init(void) {
   current_mode = MODE_KEYBOARD;
+  
+  // Initialize LED blinking state
+  caps_blink_start = board_millis();
+  caps_blink_state = false;
+  caps_blink_count = 0;
+  caps_led_override = false;
+  mode_switched = false;
   
   for (int row = 0; row < MATRIX_ROWS; row++) {
     for (int col = 0; col < MATRIX_COLS; col++) {
@@ -97,9 +112,15 @@ void check_mode_switch(void) {
     if (!mode_switch_pressed) {
       mode_switch_pressed = true;
       mode_switch_time = board_millis();
-    } else if (board_millis() - mode_switch_time > 500) { // 500ms hold
+      mode_switched = false;  // Reset switch flag for new combo press
+    } else if (!mode_switched && board_millis() - mode_switch_time > 500) { // 500ms hold
       current_mode = (current_mode == MODE_KEYBOARD) ? MODE_MIDI : MODE_KEYBOARD;
-      mode_switch_time = board_millis() + 1000; // Prevent rapid switching
+      mode_switched = true;  // Mark that we've switched for this combo press
+      
+      // Start fast blink on mode change (6 blinks = 3 seconds)
+      caps_blink_start = board_millis();
+      caps_blink_count = 6;
+      caps_led_override = true;
       
       // Clear all key states when switching modes
       for (int row = 0; row < MATRIX_ROWS; row++) {
@@ -111,6 +132,7 @@ void check_mode_switch(void) {
     }
   } else {
     mode_switch_pressed = false;
+    mode_switched = false;  // Reset when combo is released
   }
 }
 
@@ -211,6 +233,33 @@ void process_keyboard_mode(void) {
   send_keyboard_report();
 }
 
+void update_caps_led(void) {
+  uint32_t now = board_millis();
+  
+  if (caps_led_override) {
+    if (caps_blink_count > 0) {
+      // Fast blink during mode change (250ms intervals)
+      if (now - caps_blink_start >= 250) {
+        caps_blink_state = !caps_blink_state;
+        gpio_put(25, caps_blink_state ? 1 : 0);
+        caps_blink_start = now;
+        caps_blink_count--;
+      }
+    } else if (current_mode == MODE_MIDI) {
+      // Slow blink in MIDI mode (1000ms intervals)
+      if (now - caps_blink_start >= 1000) {
+        caps_blink_state = !caps_blink_state;
+        gpio_put(25, caps_blink_state ? 1 : 0);
+        caps_blink_start = now;
+      }
+    } else {
+      // Return to normal Caps Lock behavior in keyboard mode
+      caps_led_override = false;
+    }
+  }
+  // If not overridden, Caps Lock LED is controlled by main.c
+}
+
 void dual_mode_task(void) {
   matrix_scan();
   
@@ -223,6 +272,7 @@ void dual_mode_task(void) {
   }
   
   check_mode_switch();
+  update_caps_led();
   
   if (current_mode == MODE_KEYBOARD) {
     process_keyboard_mode();

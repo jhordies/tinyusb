@@ -31,6 +31,7 @@
 #include "tusb.h"
 #include "matrix.h"
 #include "dual_mode.h"
+#include "hardware/gpio.h"
 
 //--------------------------------------------------------------------+
 // MACRO CONSTANT TYPEDEF PROTYPES
@@ -115,10 +116,34 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
 {
   (void) instance;
-  (void) report_id;
-  (void) report_type;
-  (void) buffer;
-  (void) bufsize;
+
+  if (report_type == HID_REPORT_TYPE_OUTPUT)
+  {
+    // Set keyboard LED e.g Capslock, Numlock etc...
+    if (report_id == REPORT_ID_KEYBOARD)
+    {
+      // bufsize should be (at least) 1
+      if ( bufsize < 1 ) return;
+
+      uint8_t const kbd_leds = buffer[0];
+
+      // Only control Caps Lock LED if not in mode indication mode
+      if (get_current_mode() == MODE_KEYBOARD)
+      {
+        if (kbd_leds & KEYBOARD_LED_CAPSLOCK)
+        {
+          // Capslock On: turn on Caps Lock LED
+          gpio_put(25, 1); // CAPS_LED_GPIO
+        }
+        else
+        {
+          // Caplocks Off: turn off Caps Lock LED
+          gpio_put(25, 0); // CAPS_LED_GPIO
+        }
+      }
+      // In MIDI mode, LED is controlled by dual_mode.c for mode indication
+    }
+  }
 }
 
 //--------------------------------------------------------------------+
