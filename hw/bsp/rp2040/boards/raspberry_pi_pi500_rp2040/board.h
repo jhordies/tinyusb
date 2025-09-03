@@ -32,11 +32,11 @@
 #endif
 
 // --- LED CONFIGURATION ---
-#define LED_PIN               25
+#define LED_PIN               17  // Pi 500 LED on GP17
 #define LED_STATE_ON          1
 
 // --- BUTTON CONFIGURATION ---
-// Pi 500 doesn't have a user button on the RP2350 board
+// Pi 500 doesn't have a user button on the RP2040 board
 #define BUTTON_PIN            -1
 #define BUTTON_STATE_ACTIVE   0
 
@@ -51,14 +51,23 @@
 // Col pins: GP27,GP8-GP15,GP18,GP20-GP24,GP26-GP29
 // Scanning: ROW2COL, no diodes (ghost keys possible)
 
-// --- PI 500 RESERVED PINS ---
-// The following pins are used by Pi 500 keyboard matrix:
-// GP0,GP1,GP2,GP3,GP4,GP5,GP6,GP7 (rows)
-// GP8,GP9,GP10,GP11,GP12,GP13,GP14,GP15 (cols)
-// GP18,GP20,GP21,GP22,GP23,GP24 (cols)
-// GP26,GP27,GP28,GP29 (cols)
-// GP16 (debug UART TX)
-// Available for user applications: GP17,GP19,GP25
+// --- PI 500 SYSTEM PINS ---
+// All GPIO pins are reserved for Pi 500 hardware functions:
+// GP0-GP7: Keyboard matrix rows
+// GP8-GP15: Keyboard matrix columns (partial)
+// GP16: Debug UART TX
+// GP17: LED (heartbeat/debug)
+// GP18: Keyboard matrix column
+// GP19: Power button control (PWR_BTN) - CRITICAL for Pi power management
+// GP20: Power key detection column (separate from matrix)
+// GP21-GP24: Keyboard matrix columns
+// GP25: Caps Lock LED
+// GP26-GP29: Keyboard matrix columns
+// Available for user applications: NONE
+
+// ⚠️  POWER MANAGEMENT WARNING:
+// Custom firmware MUST implement power button handling via GP19 or the Pi 500
+// power button will stop working, potentially making the device unbootable.
 
 #ifdef __cplusplus
  }

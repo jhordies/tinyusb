@@ -1,1 +1,0 @@
-set(PICO_BOARD raspberry_pi_pi500)
